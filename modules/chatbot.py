@@ -1,7 +1,11 @@
 import openai
 import os
 from utils import load_dotenv
-
+from langchain.agents import create_pandas_dataframe_agent
+from langchain.chat_models import ChatOpenAI
+from langchain.agents.agent_types import AgentType
+from langchain.llms import OpenAI
+import pandas as pd
 from modules.config import CHAT_MODEL, COMPLETIONS_MODEL
 
 load_dotenv()
@@ -23,10 +27,23 @@ class Message:
 class Assistant:
     
     def __init__(self):
-        self.conversation_history = []  
+        self.conversation_history = []
+        self.data = None
+        self.agent = None
+       
+
+    def provide_data(self, data):
+        self.data = data
+        self.agent = create_pandas_dataframe_agent(
+                ChatOpenAI(temperature=0, model="gpt-4"),
+                data,
+                verbose=True,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
+        )
 
     def _get_assistant_response(self, prompt):
         try:
+            """
             completion = openai.ChatCompletion.create(
               model=CHAT_MODEL,
               messages=prompt,
@@ -41,7 +58,8 @@ class Assistant:
                 "role": response_role,
                 "content": response_content
             }
-            
+            """
+            return {"role": "Assistant", "content" : self.agent.run(prompt)}
         except Exception as e:
             return f'Request failed with exception {e}'
     
@@ -50,9 +68,9 @@ class Assistant:
         # and then call the message() method
         self.conversation_history.append(next_user_prompt[0].message())
         assistant_response = self._get_assistant_response(self.conversation_history)
+        print("response is ", assistant_response)
         return assistant_response
         
-        return assistant_response
             
     def pretty_print_conversation_history(
             self, 

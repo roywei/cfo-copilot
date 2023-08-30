@@ -7,6 +7,7 @@ from modules.prompts import system_prompt
 
 # Global variable to store uploaded file names
 uploaded_files = []
+cleaned_dfs =[]
 
 # File Upload in the right column
 def upload_file(col):
@@ -16,6 +17,7 @@ def upload_file(col):
     if uploaded_file is not None:
         data = pd.read_csv(uploaded_file)
         uploaded_files.append(uploaded_file.name)
+        cleaned_dfs.append(data)
         col.write("Uploaded files:")
         for file_name in uploaded_files:
             col.write(file_name)
@@ -79,9 +81,12 @@ def chat_interface(col):
     if user_input:
         messages = []
         # if there is no chat history, append the system prompt
-        if len(st.session_state.chat_history) == 0:
-            # don't store system prompt in chat history
-            messages.append(Message(role="system", content=system_prompt.SYSTEM_PROMPT))
+        # if len(st.session_state.chat_history) == 0:
+        #     # don't store system prompt in chat history
+        #     messages.append(Message(role="system", content=system_prompt.SYSTEM_PROMPT))
+
+        if len(cleaned_dfs) > 0:
+            st.session_state['chat'].provide_data(cleaned_dfs[0])
 
         # Append user input to chat history
         st.session_state.chat_history.append(("You", user_input))
@@ -93,10 +98,15 @@ def chat_interface(col):
         
         # Append assistant's response to chat history
         st.session_state.chat_history.append(("Assistant", response_message['content']))
+        st.session_state.user_input = ''
         
+    else:
+        # If there's no user input, set the session_state key for future use
+        st.session_state.user_input = user_input
+    
     # Display chat history
     for chat in st.session_state.chat_history:
-        col.write(f"{chat[0]}: {chat[1]}")
+        col.write(f"{chat[0]}: {chat[1]}")          
     
 def main():
     st.set_page_config(layout="wide")
