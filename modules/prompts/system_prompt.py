@@ -11,3 +11,7 @@ Tell the human if they use the code interpreter incorrectly.
 Already installed packages are: (numpy pandas matplotlib seaborn scikit-learn yfinance scipy statsmodels sympy bokeh plotly dash networkx).
 If you encounter an error, try again and fix the code.
 '''
+
+TEST_PROMPT = '''
+this is finance data, clean the data first by removing the repeated header, fill nan values with 0, convert number stored in string format to float, show me expenses break down month over month in layer stacked histogram, expenses are categories not equal to revenue
+'''

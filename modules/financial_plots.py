@@ -1,103 +1,107 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def clean_data(data):
-    """Cleans the data for plotting."""
-    # Removing rows with repeated headers
-    cleaned_data = data[data['Profit Center'] != 'Profit center']
 
-    # Converting monetary columns to float
-    for column in cleaned_data.columns[3:]:
-        cleaned_data[column] = cleaned_data[column].str.replace(',', '').astype(float).abs()
-        cleaned_data[column] = pd.to_numeric(cleaned_data[column], errors='coerce')
-    return cleaned_data
+def clean_data(df):
+    # Remove the duplicate header row
+    df = df.drop(0)
+    # Fill missing values with 0
+    df.fillna('0', inplace=True)
+    # Convert string numbers in month columns to float by removing commas
+    month_columns = df.columns[3:]
+    for column in month_columns:
+        df[column] = df[column].str.replace(',', '').astype(float)
+    return df
 
-def monthly_revenue_trend(revenue_data):
+def monthly_revenue_trend(df):
     """Generate a stacked area chart for monthly revenue trend."""
+    df['Profit Center Prefix'] = df['Profit Center'].str[:2]
+    month_columns = df.columns[3:]
+    # Group by the new prefix and month, then aggregate the revenue
+    grouped_revenue = df[df['Item'] == 'Revenue'].groupby(['Profit Center Prefix'])[month_columns].sum().abs().transpose()
+    # Plotting the monthly revenue trend for each profit center prefix
     plt.figure(figsize=(14, 8))
-
-    # Prepare data for the stacked area chart
-    monthly_data = revenue_data.set_index('Profit Center').iloc[:, 3:].transpose()
-
-    # Plotting
-    plt.stackplot(monthly_data.index, monthly_data.values.T, labels=monthly_data.columns, alpha=0.7)
-    
-    plt.title('Monthly Revenue Trend (Stacked Area)')
+    for prefix in grouped_revenue.columns:
+        plt.plot(grouped_revenue.index, grouped_revenue[prefix], marker='o', label=prefix)
+    plt.title('Monthly Revenue Trend by Profit Center Prefix')
     plt.xlabel('Month')
     plt.ylabel('Revenue')
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=10)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.grid(True)
+    plt.legend()
+    plt.xticks(rotation=45)
     plt.tight_layout()
     return plt
 
-def monthly_expense_breakdown(expense_data):
-    expense_aggregated = expense_data.groupby('Item').sum()
-    ax = expense_aggregated.T.plot(kind='bar', stacked=True, figsize=(12, 6))
-    plt.title('Monthly Expense Breakdown')
+def monthly_expense_breakdown(df):
+    expenses_df = df[df['Item'] != 'Revenue']
+    month_columns = df.columns[3:]
+    # Group by 'Item' and aggregate expenses for each month
+    grouped_expenses = expenses_df.groupby('Item')[month_columns].sum()
+    # Plotting a stacked bar chart for the monthly expense breakdown
+    plt.figure(figsize=(14, 8))
+    grouped_expenses.transpose().plot(kind='bar', stacked=True, figsize=(14,8), colormap='tab20', ax=plt.gca())
+    plt.title('Monthly Expense Breakdown by Type')
     plt.xlabel('Month')
     plt.ylabel('Expense Amount')
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.grid(axis='y')
+    plt.xticks(rotation=45)
+    plt.legend(title="Expense Type", bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     return plt
 
-def total_revenue_vs_expenses(revenue_data, expense_data):
-    total_revenue = revenue_data.sum(numeric_only=True)
-    total_expenses = expense_data.sum(numeric_only=True)
-    total_revenue = total_revenue.iloc[3:].sort_index()
-    total_expenses = total_expenses.iloc[3:].sort_index()
-    plt.figure(figsize=(12, 6))
-    plt.bar(total_revenue.index, total_revenue.values, label='Total Revenue', alpha=0.7)
-    plt.figure(figsize=(12, 6))
-    plt.bar(total_revenue.index, total_revenue.values, label='Total Revenue', alpha=0.7)
-    plt.bar(total_expenses.index, total_expenses.values, label='Total Expenses', alpha=0.7)
-    plt.title('Total Revenue vs. Total Expenses')
+def total_revenue_vs_expenses(df):
+    print(df.head())
+    month_columns = df.columns[3:]
+
+    # Calculate total revenue and total expenses for each month
+    total_revenue = df[df['Item'] == 'Revenue'][month_columns].sum(numeric_only=True).abs()
+    total_expenses = df[df['Item'] != 'Revenue'][month_columns].sum(numeric_only=True)
+    
+    # Print the heads of total_revenue and total_expenses to inspect
+    print(total_revenue.head())
+    print(total_expenses.head())
+    
+    # Create a new DataFrame for easy plotting
+    comparison_df = pd.DataFrame({
+        'Total Revenue': total_revenue,
+        'Total Expenses': total_expenses
+    })
+    
+    # Print the head of comparison_df to inspect
+    print(comparison_df.head())
+
+    # Setting custom colors for the bars
+    colors = ['#264653', '#E76F51']  # deep blue for revenue, dark red for expenses
+
+    # Plotting with the custom colormap
+    comparison_df.plot(kind='bar', figsize=(12,7), color=colors)
+
+    plt.title('Total Revenue vs. Total Expenses Month over Month')
     plt.xlabel('Month')
     plt.ylabel('Amount')
-    plt.legend()
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.grid(axis='y')
+    plt.xticks(rotation=45)
+    plt.legend(loc="upper left")
     plt.tight_layout()
     return plt
 
-import matplotlib.patches as mpatches
 
-def cost_center_expense_distribution(expense_data):
-    """Generate a simple treemap for cost center expense distribution using just matplotlib."""
-    plt.figure(figsize=(14, 8))
-    
-    # Aggregate data
-    total_expenses = expense_data.groupby("Cost Center").sum().sum(axis=1)
-    total_expenses = total_expenses.sort_values(ascending=False)
-    
-    # To make the treemap more readable, we'll display top N cost centers and group the rest under 'Others'
-    N = 20
-    top_N = total_expenses.head(N)
-    if len(total_expenses) > N:
-        top_N['Others'] = total_expenses[N:].sum()
-    
-    # Simple treemap plotting using pie chart as an alternative
-    patches, texts, autotexts = plt.pie(top_N, labels=None, autopct='%1.1f%%', startangle=140, colors=plt.cm.tab20c.colors)
-    plt.title('Cost Center Expense Distribution')
-    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.    
-
-    # Create custom legend
-    legend_patches = []
-    for i, (label, value) in enumerate(top_N.items()):
-        color = plt.cm.tab20c.colors[i % len(plt.cm.tab20c.colors)]
-        legend_patches.append(mpatches.Patch(color=color, label=f'{label} - {value:.2f}'))
-    plt.legend(handles=legend_patches, loc='lower center', ncol=4, bbox_to_anchor=(0.5, -0.2), title='Cost Center - Expense')
-    
-    return plt
-
-def monthly_net_profit_loss(revenue_data, expense_data):
-    total_revenue = revenue_data.sum(numeric_only=True)
-    total_expenses = expense_data.sum(numeric_only=True)
-    net_profit_loss = total_revenue - total_expenses
-    plt.figure(figsize=(12, 6))
-    net_profit_loss.plot(kind='line', marker='o', color='green' if all(net_profit_loss >= 0) else 'red')
-    plt.title('Monthly Net Profit/Loss')
+def monthly_net_profit_loss(df):
+    month_columns = df.columns[3:]  
+    # Convert revenue values to positive
+    df.loc[df['Item'] == 'Revenue', month_columns] = df.loc[df['Item'] == 'Revenue', month_columns]
+    # Step 3: Calculate the profit for each month
+    profit = df[df['Item'] == 'Revenue'][month_columns].sum(numeric_only=True).abs() - df[df['Item'] != 'Revenue'][month_columns].sum(numeric_only=True)
+    # Convert profit to DataFrame for easier plotting
+    profit_df = profit.reset_index()
+    profit_df.columns = ['Month', 'Profit']
+    # Step 4: Plotting the month over month profit
+    plt.figure(figsize=(10, 6))
+    plt.plot(profit_df['Month'], profit_df['Profit'], marker='o', color='b')
+    plt.title('Month over Month Profit')
     plt.xlabel('Month')
-    plt.ylabel('Net Amount')
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-    plt.axhline(0, color='black', linewidth=0.7)
+    plt.ylabel('Profit')
+    plt.grid(True)
+    plt.xticks(rotation=45)
     plt.tight_layout()
     return plt
