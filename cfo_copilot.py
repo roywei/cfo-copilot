@@ -31,6 +31,7 @@ with st.sidebar:
     if 'OPENAI_API_KEY' in st.secrets:
         st.success('API key already provided!', icon='✅')
         openai.api_key = st.secrets['OPENAI_API_KEY']
+        os.environ['OPENAI_API_KEY'] = openai.api_key 
     else:
         openai.api_key = st.text_input('Enter OpenAI API key:', type='password')
         if not (openai.api_key.startswith('sk-') and len(openai.api_key)==51):
