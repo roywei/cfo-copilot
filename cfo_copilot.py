@@ -12,7 +12,9 @@ from utils import get_images, load_dotenv
 import tempfile
 import os
 import io
-load_dotenv()
+
+#load_dotenv()
+
 st.set_page_config(
         page_title="Co-Pilot for CFO",
         page_icon=":money_with_wings:",
@@ -83,7 +85,6 @@ if prompt := st.chat_input("Question about your financial data?"):
     with st.chat_message("user"):
         st.markdown(prompt)
     with st.spinner("Thinking..."):
-        print(uploaded_files_list)
         with CodeInterpreterSession(model="gpt-4-0613") as session:
             response = session.generate_response_sync(prompt, files=uploaded_files_list)
 

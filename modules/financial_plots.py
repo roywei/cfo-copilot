@@ -18,7 +18,7 @@ def monthly_revenue_trend(df):
     df['Profit Center Prefix'] = df['Profit Center'].str[:2]
     month_columns = df.columns[3:]
     # Group by the new prefix and month, then aggregate the revenue
-    grouped_revenue = df[df['Item'] == 'Revenue'].groupby(['Profit Center Prefix'])[month_columns].sum().abs().transpose()
+    grouped_revenue = df[df['Item'] == 'Revenue'].groupby(['Profit Center Prefix'])[month_columns].sum(numeric_only=True).abs().transpose()
     # Plotting the monthly revenue trend for each profit center prefix
     plt.figure(figsize=(14, 8))
     for prefix in grouped_revenue.columns:
