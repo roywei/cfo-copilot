@@ -7,11 +7,11 @@ __pycache__/
 *.codebox
 .data/Budget.csv
 .data/sf_budget.csv
-.output/*.csv
-.output/*.json
-.output/*.jpeg
-.output/*.png
-.output/*.jpg
+.data/*.csv
+.data/*.json
+.data/*.jpeg
+.data/*.png
+.data/*.jpg
 
 # C extensions
 *.so
