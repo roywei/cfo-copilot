@@ -5,6 +5,13 @@ __pycache__/
 
 *.streamlit/secrets.toml
 *.codebox
+*.csv
+.data/*.csv
+.output/*.csv
+.output/*.json
+.output/*.jpeg
+.output/*.png
+.output/*.jpg
 
 # C extensions
 *.so
