@@ -1,7 +1,9 @@
 openai
-codeinterpreterapi[all]
 langchain
 streamlit
 numpy
 pandas
 matplotlib
+pillow
+tokentrim
+sodapy

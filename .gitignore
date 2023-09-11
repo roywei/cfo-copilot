@@ -5,8 +5,8 @@ __pycache__/
 
 *.streamlit/secrets.toml
 *.codebox
-*.csv
-.data/*.csv
+.data/Budget.csv
+.data/sf_budget.csv
 .output/*.csv
 .output/*.json
 .output/*.jpeg

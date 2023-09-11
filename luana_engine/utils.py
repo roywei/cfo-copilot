@@ -4,13 +4,14 @@ from os.path import join, dirname
 import openai
 from .prompts.output_file_check import output_file_check_prompt
 
+
 def load_dotenv():
     # find the .env file from parent directory
-    dotenv_path = join(dirname(__file__), '../.env')
+    dotenv_path = join(dirname(__file__), "../.env")
     # read each line and assign env var name and value split by '='
     print("loading env file from: ", dotenv_path)
     for line in open(dotenv_path):
-        var = line.strip().split('=')
+        var = line.strip().split("=")
         if len(var) == 2:
             key, value = var[0].strip(), var[1].strip()
             # set the env var
@@ -36,14 +37,14 @@ def merge_deltas(original, delta):
                 original[key] = value
     return original
 
-def parse_partial_json(s):
 
+def parse_partial_json(s):
     # Attempt to parse the string as-is.
     try:
         return json.loads(s)
     except json.JSONDecodeError:
         pass
-  
+
     # Initialize variables.
     new_s = ""
     stack = []
@@ -55,9 +56,9 @@ def parse_partial_json(s):
         if is_inside_string:
             if char == '"' and not escaped:
                 is_inside_string = False
-            elif char == '\n' and not escaped:
-                char = '\\n' # Replace the newline character with the escape sequence.
-            elif char == '\\':
+            elif char == "\n" and not escaped:
+                char = "\\n"  # Replace the newline character with the escape sequence.
+            elif char == "\\":
                 escaped = not escaped
             else:
                 escaped = False
@@ -65,17 +66,17 @@ def parse_partial_json(s):
             if char == '"':
                 is_inside_string = True
                 escaped = False
-            elif char == '{':
-                stack.append('}')
-            elif char == '[':
-                stack.append(']')
-            elif char == '}' or char == ']':
+            elif char == "{":
+                stack.append("}")
+            elif char == "[":
+                stack.append("]")
+            elif char == "}" or char == "]":
                 if stack and stack[-1] == char:
                     stack.pop()
                 else:
                     # Mismatched closing character; the input is malformed.
                     return None
-        
+
         # Append the processed character to the new string.
         new_s += char
 
@@ -95,10 +96,7 @@ def parse_partial_json(s):
         return None
 
 
-
-def get_file_modifications(
-    code: str,
-    retry: int = 2):
+def get_file_modifications(code: str, retry: int = 2):
     if retry < 1:
         return None
 
@@ -106,11 +104,11 @@ def get_file_modifications(
     messages = [{"role": "user", "content": prompt}]
     print(messages)
     response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=messages,
-                stream=False,
-                temperature=0.03,
-            )
+        model="gpt-3.5-turbo",
+        messages=messages,
+        stream=False,
+        temperature=0.03,
+    )
 
     try:
         result = json.loads(response["choices"][0]["message"]["content"])
