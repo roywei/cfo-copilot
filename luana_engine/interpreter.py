@@ -122,12 +122,11 @@ class Interpreter:
             # gpt-4
             self.verify_api_key()
 
-        # Check if `message` was passed in by user
-        print("message is ", message)
         if message:
             # If it was, we respond non-interactivley
 
             self.messages.append({"role": "user", "content": message})
+            self.chat_history.append({"role": "user", "content": message})
             self.respond()
 
         if return_messages:
@@ -332,4 +331,6 @@ class Interpreter:
                                 st.plotly_chart(fig)
                             else:
                                 print("unsupported file type:", file)
+                        # reset if already displayed
+                        self.last_ran_code = None
                     return
