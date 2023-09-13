@@ -142,9 +142,9 @@ def plot_files(files, component=None):
 
             fig = plotly.io.read_json(file)
             if component:
-                component.plotly_chart(fig)
+                component.plotly_chart(fig, use_container_width=True)
             else:
-                st.plotly_chart(fig)
+                st.plotly_chart(fig, use_container_width=True)
         elif file.endswith(".csv"):
             import pandas as pd
 
