@@ -7,4 +7,5 @@ matplotlib
 pillow
 tokentrim
 sodapy
+ipython
 plotly
