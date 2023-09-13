@@ -1,5 +1,6 @@
 from .utils import merge_deltas, parse_partial_json
 from .code_interpreter import CodeInterpreter
+from .python_interpreter import PythonInterpreter
 from .prompts import system_prompt
 import os
 import time
@@ -10,8 +11,9 @@ import tokentrim as tt
 from .utils import load_dotenv
 import streamlit as st
 from .utils import get_file_modifications
-from PIL import Image
 import shutil
+from .utils import plot_files
+from .prompts.generate_functions import finance_data_functions, city_budget_functions
 
 # Function schema for gpt-4
 function_schema = {
@@ -53,6 +55,11 @@ confirm_mode_message = """
 Press `CTRL-C` to exit.
 """
 
+pre_load_function_mapping = {
+    ".data/finance.csv": finance_data_functions,
+    ".data/sf_budget.csv": city_budget_functions,
+}
+
 
 class Interpreter:
     def __init__(self):
@@ -81,7 +88,9 @@ class Interpreter:
         self.data_path = None
         self.think_step = 0
         self.chat_history = []
+        self.output_files = []
         # delete all files in .output folder but keep the folder
+        """
         dir_path = ".output"
         for filename in os.listdir(dir_path):
             file_path = os.path.join(dir_path, filename)
@@ -92,6 +101,7 @@ class Interpreter:
                     shutil.rmtree(file_path)
             except Exception as e:
                 print(f"Failed to delete {file_path}. Reason: {e}")
+        """
 
     def get_info_for_system_message(self):
         """
@@ -116,21 +126,36 @@ class Interpreter:
     def load(self, messages):
         self.messages = messages
 
-    def chat(self, message=None, return_messages=False):
+    def chat(
+        self,
+        message=None,
+        return_messages=False,
+        plot=False,
+        show_thinking=False,
+        store_history=False,
+    ):
         # Connect to an LLM (an large language model)
         if not self.local:
             # gpt-4
             self.verify_api_key()
-
+        self.output_files = []
+        print("Inside chat now")
         if message:
             # If it was, we respond non-interactivley
-
             self.messages.append({"role": "user", "content": message})
-            self.chat_history.append({"role": "user", "content": message})
-            self.respond()
+            if store_history:
+                self.chat_history.append({"role": "user", "content": message})
+            self.respond(
+                plot=plot, show_thinking=show_thinking, store_history=store_history
+            )
 
         if return_messages:
-            return self.chat_history
+            return (
+                self.chat_history if self.chat_history else self.messages,
+                self.output_files,
+            )
+        else:
+            return self.output_files
 
     def verify_api_key(self):
         """
@@ -160,7 +185,7 @@ class Interpreter:
             load_dotenv()
             openai.api_key = os.environ["OPENAI_API_KEY"]
 
-    def respond(self):
+    def respond(self, plot=False, show_thinking=False, store_history=False):
         # Add relevant info to system_message
         # (e.g. current working directory, username, os, etc.)
         # info = self.get_info_for_system_message()
@@ -190,7 +215,9 @@ class Interpreter:
         messages = tt.trim(
             self.messages,
             self.model,
-            system_message=self.system_message + self.additional_system_message,
+            system_message=self.system_message
+            + pre_load_function_mapping[os.environ.get("data", ".data/finance.csv")]
+            + self.additional_system_message,
         )
 
         if self.debug_mode:
@@ -202,8 +229,11 @@ class Interpreter:
         self.messages.append({})
         in_function_call = False
 
-        expander = st.expander("Show Thinking Step " + str(self.think_step))
-        process_box = expander.empty()
+        expander = None
+        process_box = None
+        if show_thinking:
+            expander = st.expander("Show Thinking Step " + str(self.think_step))
+            process_box = expander.empty()
 
         for _ in range(3):  # 3 retries
             try:
@@ -227,7 +257,7 @@ class Interpreter:
                 break
             except openai.error.RateLimitError:
                 # Rate limit hit. Retrying in 3 seconds
-                time.sleep(3)
+                time.sleep(5)
         else:
             raise openai.error.RateLimitError("RateLimitError: Max retries reached")
 
@@ -255,9 +285,9 @@ class Interpreter:
                         ] = new_parsed_arguments
             else:
                 in_function_call = False
-
-                # stream thinking process
-                process_box.markdown(self.messages[-1]["content"])
+                if show_thinking:
+                    # stream thinking process
+                    process_box.markdown(self.messages[-1]["content"])
 
             if chunk["choices"][0]["finish_reason"]:
                 if chunk["choices"][0]["finish_reason"] == "function_call":
@@ -265,15 +295,16 @@ class Interpreter:
                         print("Running function:")
                         print(self.messages[-1])
                         print("---")
-                        process_box.markdown("Running function:")
-                        process_box.code(
-                            self.messages[-1]["function_call"]["parsed_arguments"][
-                                "code"
-                            ],
-                            language=self.messages[-1]["function_call"][
-                                "parsed_arguments"
-                            ]["language"],
-                        )
+                        if show_thinking:
+                            process_box.markdown("Running function:")
+                            process_box.code(
+                                self.messages[-1]["function_call"]["parsed_arguments"][
+                                    "code"
+                                ],
+                                language=self.messages[-1]["function_call"][
+                                    "parsed_arguments"
+                                ]["language"],
+                            )
 
                     if "parsed_arguments" not in self.messages[-1]["function_call"]:
                         self.messages.append(
@@ -284,15 +315,26 @@ class Interpreter:
                             }
                         )
 
-                        self.respond()
+                        self.respond(
+                            plot=plot,
+                            show_thinking=show_thinking,
+                            store_history=store_history,
+                        )
                         return
                     language = self.messages[-1]["function_call"]["parsed_arguments"][
                         "language"
                     ]
                     if language not in self.code_interpreters:
-                        self.code_interpreters[language] = CodeInterpreter(
-                            language, self.debug_mode
-                        )
+                        if language == "python":
+                            self.code_interpreters[language] = PythonInterpreter(
+                                preset_functions=pre_load_function_mapping[
+                                    os.environ.get("data", ".data/finance.csv")
+                                ]
+                            )
+                        else:
+                            self.code_interpreters[language] = CodeInterpreter(
+                                language, self.debug_mode
+                            )
                     code_interpreter = self.code_interpreters[language]
                     self.last_ran_code = self.messages[-1]["function_call"][
                         "parsed_arguments"
@@ -305,32 +347,28 @@ class Interpreter:
                             "content": output if output else "No output",
                         }
                     )
-                    self.respond()
+                    self.respond(
+                        plot=plot,
+                        show_thinking=show_thinking,
+                        store_history=store_history,
+                    )
                 else:
                     # we're done, check for outputs
                     self.think_step = 0
-
-                    self.chat_history.append(self.messages[-1])
-                    st.markdown(self.messages[-1]["content"])
+                    print("We are done")
+                    print("last response", self.messages[-1])
+                    if store_history:
+                        self.chat_history.append(self.messages[-1])
+                    if show_thinking:
+                        st.markdown(self.messages[-1]["content"])
 
                     if self.last_ran_code and len(self.last_ran_code) > 0:
                         output_files = get_file_modifications(self.last_ran_code)
-                        for file in output_files:
-                            print("file", file)
-                            if (
-                                file.endswith(".png")
-                                or file.endswith(".jpg")
-                                or file.endswith(".jpeg")
-                            ):
-                                image = Image.open(file)
-                                st.image(image)
-                            elif file.endswith(".json"):
-                                import plotly
-
-                                fig = plotly.io.read_json(file)
-                                st.plotly_chart(fig)
-                            else:
-                                print("unsupported file type:", file)
+                        print("output_files", output_files)
+                        if plot:
+                            plot_files(output_files)
                         # reset if already displayed
                         self.last_ran_code = None
+                        self.output_files.extend(output_files)
+
                     return

@@ -12,7 +12,11 @@ __pycache__/
 .data/*.jpeg
 .data/*.png
 .data/*.jpg
-
+.output/*.json
+.output/*.csv
+.output/*.jpeg
+.output/*.png
+.output/*.jpg
 # C extensions
 *.so
 

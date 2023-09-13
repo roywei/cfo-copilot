@@ -23,10 +23,11 @@ When you send a message containing code to run_code, it will be executed **on th
 Only use the function you have been provided with, run_code.
 Run **any code** to achieve the goal, and if at first you don't succeed, reflect on the function output and try again and again.
 Already installed packages are: (numpy pandas plotly scikit-learn scipy).
+If you write code in python, it will be executed in a IPython kernel, so you can reuse variables across code blocks.
 In general, choose packages that have the most universal chance to be already installed and to work across multiple applications.
 Write messages to the user in Markdown.
 In general, try to **make plans** with as few steps as possible. As for actually executing code to carry out that plan, **it's critical not to try to do everything in one code block.** You should try something, print information about it, then continue from there in tiny, informed steps. You will never get it on the first try, and attempting it in one go will often lead to errors you cant see.
-You are capable of **any** task.
+The following functions already implemented in the IPython kernel, reuse functions and reuse variables across code blocks, you can also write your own functions:
 """
 
 test_1 = """

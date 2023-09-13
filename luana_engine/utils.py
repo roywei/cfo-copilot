@@ -3,6 +3,7 @@ import os
 from os.path import join, dirname
 import openai
 from .prompts.output_file_check import output_file_check_prompt
+import streamlit as st
 
 
 def load_dotenv():
@@ -121,3 +122,42 @@ def get_file_modifications(code: str, retry: int = 2):
     if not result or not isinstance(result, dict) or "modifications" not in result:
         return get_file_modifications(code, llm, retry=retry - 1)
     return result["modifications"]
+
+
+@st.cache_data
+def convert_df(df):
+    return df.to_csv(index=False).encode("utf-8")
+
+
+def plot_files(files, component=None):
+    for file in files:
+        if file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg"):
+            image = Image.open(file)
+            if component:
+                component.image(image)
+            else:
+                st.image(image)
+        elif file.endswith(".json"):
+            import plotly
+
+            fig = plotly.io.read_json(file)
+            if component:
+                component.plotly_chart(fig)
+            else:
+                st.plotly_chart(fig)
+        elif file.endswith(".csv"):
+            import pandas as pd
+
+            df = pd.read_csv(file)
+            csv = convert_df(df)
+            # strip directy path from file name
+            file_name = file.split("/")[-1]
+            st.download_button(
+                "Press to Download" + file_name,
+                csv,
+                file_name,
+                "text/csv",
+                key=file_name,
+            )
+        else:
+            print("unsupported file type:", file)
