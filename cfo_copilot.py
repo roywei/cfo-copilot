@@ -74,6 +74,7 @@ st.subheader("Automated analysis, insights and answers to your questions instant
 # initialize the agent
 if "agent" not in st.session_state:
     st.session_state["agent"] = interpreter.Interpreter()
+    st.session_state["agent"].use_azure = False #os.environ['USE_AZURE']
 
 
 # download data from socrata
@@ -153,9 +154,15 @@ for key, value in all_metrics_data.items():
     )
     i += 1
 
-dashboard, chat_panel = st.columns(2, gap="large")
+dashboard1, dashboard2 = st.columns(2, gap="large")
+# plot file alternatively in dashboard 1 and 2
+idx = 0
 for file in all_files:
-    plot_files(file, dashboard)
+    if idx % 2 == 0:
+        plot_files(file, dashboard1)
+    else:
+        plot_files(file, dashboard2)
+    idx += 1
 
 
 @st.cache_resource
@@ -170,9 +177,9 @@ def get_summary():
 
 
 summary = get_summary()
-chat_panel.write("**Executive Summary:**")
-chat_panel.markdown(summary)
-chat_panel.markdown("**Got questions? Ask here:**")
+st.title("**Executive Summary:**")
+st.markdown(summary)
+st.markdown("**Got questions? Ask here:**")
 
 
 if "messages" not in st.session_state:
@@ -181,13 +188,13 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     if message["content"] != "":
         if message["role"] == "user":
-            chat_panel.chat_message("user", avatar="🙋‍♂️").markdown(message["content"])
+            st.chat_message("user", avatar="🙋‍♂️").markdown(message["content"])
         elif message["role"] == "assistant":
-            chat_panel.chat_message("assitant", avatar="📈").markdown(message["content"])
+            st.chat_message("assitant", avatar="📈").markdown(message["content"])
 
 if prompt := st.chat_input("Question about your financial data?"):
-    chat_panel.chat_message("user", avatar="🙋‍♂️").markdown(prompt)
-    with chat_panel.chat_message("assitant", avatar="📈"):
+    st.chat_message("user", avatar="🙋‍♂️").markdown(prompt)
+    with st.chat_message("assitant", avatar="📈"):
         messages, files = st.session_state["agent"].chat(
             prompt,
             return_messages=True,

@@ -163,25 +163,30 @@ class Interpreter:
         """
         if self.use_azure:
             all_env_available = (
-                "OPENAI_API_KEY" in os.environ
+                "AZURE_OPENAI_KEY1" in os.environ
                 and "AZURE_API_BASE" in os.environ
                 and "AZURE_API_VERSION" in os.environ
                 and "AZURE_DEPLOYMENT_NAME" in os.environ
             )
             if all_env_available:
-                self.api_key = os.environ["OPENAI_API_KEY"]
+                self.api_key = os.environ["AZURE_OPENAI_KEY1"]
+                print(self.api_key)
                 self.azure_api_base = os.environ["AZURE_API_BASE"]
+                print(self.azure_api_base)
                 self.azure_api_version = os.environ["AZURE_API_VERSION"]
+                print(self.azure_api_version)
                 self.azure_deployment_name = os.environ["AZURE_DEPLOYMENT_NAME"]
+                print(self.azure_deployment_name)
             else:
                 # TODO: guide user to configure azure
                 print(missing_azure_info_message)
-
+            load_dotenv()
             openai.api_type = "azure"
             openai.api_base = self.azure_api_base
             openai.api_version = self.azure_api_version
             openai.api_key = self.api_key
         else:
+            print("using openai")
             load_dotenv()
             openai.api_key = os.environ["OPENAI_API_KEY"]
 
@@ -262,8 +267,8 @@ class Interpreter:
             raise openai.error.RateLimitError("RateLimitError: Max retries reached")
 
         for chunk in response:
-            if self.use_azure:
-                pass
+            if self.use_azure and ('choices' not in chunk or len(chunk['choices']) == 0):
+                continue
 
             else:
                 delta = chunk["choices"][0]["delta"]
