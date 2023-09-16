@@ -69,7 +69,7 @@ with st.sidebar:
 
 
 st.title("Your Finance Dashboard")
-st.subheader("Automated analysis, insights and answers to your questions instantly")
+st.subheader("Automated analysis, insights and answers to your questions")
 
 # initialize the agent
 if "agent" not in st.session_state:
@@ -110,33 +110,53 @@ def get_metrics():
 
     if num_metrics > 0:
         for i in range(num_metrics):
-            files = st.session_state["agent"].chat(
-                f"now plot the metric {metrics[i]} over time, save the plot as {metrics[i]}.json using plotly",
-                return_messages=False,
-                plot=False,
-                show_thinking=False,
-            )
-            all_files.append(files)
-            messages, _ = st.session_state["agent"].chat(
-                "now calculate the value of " + metrics[i] + metric_prompt_template,
-                return_messages=True,
-                show_thinking=False,
-            )
-            # parse last message as json object
-            start_pos = messages[-1]["content"].find("{")
-            end_pos = messages[-1]["content"].rfind("}") + 1
+            metrics[i] = metrics[i].strip()
+            existing_files = os.listdir(".output/")
+            print("existing files are", existing_files)
+            print("trying to find file", metrics[i] + ".json")
+            if metrics[i] + ".json" in existing_files:
+                print("found file", metrics[i] + ".json")
+                all_files.append(".output/" + metrics[i] + ".json")
+                # read json file as string
+                print('trying to read', ".output/" + metrics[i] + ".json")
+                with open(".output/" + metrics[i] + ".json", "r") as f:
+                    metric_data = json.load(f)
+                    print(metric_data)
+                    y_values = metric_data['data'][0]['y']
+                    last_value = y_values[-1]
+                    second_last_value = y_values[-2]
+                    delta = (last_value - second_last_value) / second_last_value * 100
+                    delta = "{:.2f}".format(delta)
+                    last_value = "{:.2f}".format(last_value)
+                    all_metrics_data[metrics[i]] = {"value": last_value, "delta": delta}
+            else:
+                files = st.session_state["agent"].chat(
+                    f"now plot the metric {metrics[i]} over time, save the plot as {metrics[i]}.json using plotly",
+                    return_messages=False,
+                    plot=False,
+                    show_thinking=False,
+                )
+                all_files.append(files)
+                messages, _ = st.session_state["agent"].chat(
+                    "now calculate the value of " + metrics[i] + metric_prompt_template,
+                    return_messages=True,
+                    show_thinking=False,
+                )
+                # parse last message as json object
+                start_pos = messages[-1]["content"].find("{")
+                end_pos = messages[-1]["content"].rfind("}") + 1
 
-            # Extract the JSON object string
-            json_str = messages[-1]["content"][start_pos:end_pos]
+                # Extract the JSON object string
+                json_str = messages[-1]["content"][start_pos:end_pos]
 
-            # Parse the JSON object string to a Python dictionary
-            metric_data = json.loads(json_str)
-            value = metric_data["value"]
-            value = "{:.2f}".format(value)
-            delta = metric_data["delta"]
-            # convert delta to show 2 decimal places
-            delta = "{:.2f}".format(delta)
-            all_metrics_data[metrics[i]] = {"value": value, "delta": delta}
+                # Parse the JSON object string to a Python dictionary
+                metric_data = json.loads(json_str)
+                value = metric_data["value"]
+                value = "{:.2f}".format(value)
+                delta = metric_data["delta"]
+                # convert delta to show 2 decimal places
+                delta = "{:.2f}".format(delta)
+                all_metrics_data[metrics[i]] = {"value": value, "delta": delta}
     else:
         print("No metrics found")
 
@@ -157,23 +177,34 @@ for key, value in all_metrics_data.items():
 dashboard1, dashboard2 = st.columns(2, gap="large")
 # plot file alternatively in dashboard 1 and 2
 idx = 0
+print("all files", all_files)
 for file in all_files:
+    print("idx is ", idx)
     if idx % 2 == 0:
         plot_files(file, dashboard1)
+        print("printing file to dashboard 1", file)
     else:
         plot_files(file, dashboard2)
+        print("printing file to dashboard 2", file)
     idx += 1
 
 
 @st.cache_resource
 def get_summary():
+    # append key metrics into string
+    metric_summary = ""
+    for metric_name in all_metrics_data:
+        metric = all_metrics_data[metric_name]
+        # each metric contains name, value and delta, append all fields
+        metric_summary += metric_name + " current value is " + metric["value"] + " delta over last period is " + metric["delta"] + "\n"
+
     messages, _ = st.session_state["agent"].chat(
-        "Based on the key metrics, generate a executive summary and recommendations in 2-3 sentences",
+        "Based on the key metrics, generate a executive summary and recommendations in 2-3 sentences: " + metric_summary,
         return_messages=True,
         plot=False,
         show_thinking=False,
     )
-    return messages[-1]["content"]
+    return messages[-1]["content"].replace("$", "\$")
 
 
 summary = get_summary()
@@ -202,4 +233,13 @@ if prompt := st.chat_input("Question about your financial data?"):
             show_thinking=True,
             store_history=True,
         )
+        if files and len(files) > 0:
+            # if files is a list
+            if isinstance(files, list):
+                # merge files with all_files
+                all_files.extend(files)
+            elif isinstance(files, str):
+                all_files.append(files)
+        # process nested lists into single list of string
+        print("all files", all_files)
         st.session_state.messages = messages

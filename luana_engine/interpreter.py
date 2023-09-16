@@ -208,10 +208,14 @@ class Interpreter:
             self.additional_system_message = (
                 "The data is located locally in current directory at "
                 + os.environ.get("data", ".data/finance.csv")
-                + " . use plotly if you need to plot graph and output using plotly.io.write_json to .output/ folder in json format"
-                + "Don't tell the user where you stored the output data"
-                + "Remember this is finance data per accounting format. Remove duplicate rows if necessary. Fill nan values with 0, convert string numbers to float and remove comma. "
-                + "When you calculate Revenue or Profit, remember to convert revenue sum to positive. Apply your financial knowledge to best translate user intent into program. The data description is "
+                + " Remember this is finance data per accounting format. Remove duplicate rows if necessary. Fill nan values with 0, convert string numbers to float and remove comma."
+                + "When you calculate Revenue or Profit, remember to convert revenue sum to positive."
+                + "Remember Revenue is not cost nor expense, think carefully about what to include and exclude in the result."
+                + "Try to use plot or table to present your result, decide on the best plot or chart type for financial reporting, use bar chart for breakdown comparison."
+                + "Remember to only use plotly for plots, never show the plot, always save output using plotly.io.write_json to .output/ folder in json format, finance dashboard can only read from output files."
+                + "When you decide to output a table, ask the user if they want to export it, if so, save it to .output/ folder in csv format"
+                + "Don't tell the user where you stored the output data, tell the user it will be displayed on the finance dashboard"
+                "The data description is "
                 + description
                 + " and the first 5 rows are "
                 + first_rows
@@ -220,6 +224,7 @@ class Interpreter:
         messages = tt.trim(
             self.messages,
             self.model,
+            trim_ratio=0.5,
             system_message=self.system_message
             + pre_load_function_mapping[os.environ.get("data", ".data/finance.csv")]
             + self.additional_system_message,
@@ -371,7 +376,8 @@ class Interpreter:
                         output_files = get_file_modifications(self.last_ran_code)
                         print("output_files", output_files)
                         if plot:
-                            plot_files(output_files)
+                            for file in output_files:
+                                plot_files(file)
                         # reset if already displayed
                         self.last_ran_code = None
                         self.output_files.extend(output_files)

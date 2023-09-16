@@ -129,8 +129,7 @@ def convert_df(df):
     return df.to_csv(index=False).encode("utf-8")
 
 
-def plot_files(files, component=None):
-    for file in files:
+def plot_files(file, component=None):
         if file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg"):
             image = Image.open(file)
             if component:
@@ -149,11 +148,13 @@ def plot_files(files, component=None):
             import pandas as pd
 
             df = pd.read_csv(file)
+            # show dataframe
+            st.dataframe(df, use_container_width=True)
             csv = convert_df(df)
             # strip directy path from file name
             file_name = file.split("/")[-1]
             st.download_button(
-                "Press to Download" + file_name,
+                "Press to Download: " + file_name,
                 csv,
                 file_name,
                 "text/csv",
