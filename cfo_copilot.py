@@ -136,7 +136,8 @@ def get_metrics():
                     plot=False,
                     show_thinking=False,
                 )
-                all_files.append(files)
+                if len(files) > 0:
+                    all_files.extend(files)
                 messages, _ = st.session_state["agent"].chat(
                     "now calculate the value of " + metrics[i] + metric_prompt_template,
                     return_messages=True,
